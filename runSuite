@@ -1,0 +1,45 @@
+#!/bin/bash
+missing() {
+   echo "Missing or unreadable .in or .out files!" 1>&2
+   exit 1
+}
+
+if [ ${#} -ne 2 ] ; then
+   echo "Incorrect number of command line arguments!" 1>&2
+   exit 1
+fi
+
+for file in `cat "${1}"` ; do
+    [ -r "${file}.in" ]
+    if [ ${?} -gt 0 ] ; then
+         missing
+    fi
+
+    [ -r "${file}.out" ]
+    if [ ${?} -gt 0 ] ; then
+         missing
+    fi
+
+    temp=`mktemp`
+
+    [ -r "${file}.args" ]
+    if [ ${?} -eq 0 ] ; then
+         "${2}" `cat "${file}.args"` < "${file}.in" > ${temp}
+    else
+         "${2}" < "${file}.in" > ${temp}
+    fi
+
+    diff ${temp} "${file}.out" > /dev/null
+
+    if [ ${?} -gt 0 ] ; then
+       echo Test failed: "${file}"
+       echo "Input:"
+       cat "${file}.in"
+       echo "Expected:"
+       cat "${file}.out"
+       echo "Actual:"
+       cat ${temp}
+   fi
+  
+   rm ${temp}
+done
